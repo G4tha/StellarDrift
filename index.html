@@ -1,0 +1,2244 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>STELLARDRIFT — Penjelajahan Luar Angkasa Tanpa Batas</title>
+    <style>
+        :root {
+            --cyan: #00d4ff;
+            --cyan-bright: #00ffcc;
+            --navy: #001428;
+            --dark: #000810;
+            --glass-bg: rgba(0, 20, 40, 0.65);
+            --glass-border: rgba(0, 200, 255, 0.3);
+            --text: #e8f4ff;
+            --text-dim: #8899aa;
+            --glow: 0 0 20px rgba(0, 212, 255, 0.6);
+            --glow-strong: 0 0 40px rgba(0, 212, 255, 0.9);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--dark);
+            font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+            color: var(--text);
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 8, 16, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: opacity 0.4s ease;
+        }
+
+        .overlay.hidden {
+            display: none;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 24px 28px;
+            box-shadow: var(--glow), inset 0 0 30px rgba(0, 200, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            text-align: center;
+            max-width: 95vw;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .title-glow {
+            font-size: clamp(2rem, 7vw, 4.5rem);
+            font-weight: 900;
+            letter-spacing: 0.15em;
+            color: var(--cyan-bright);
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.8), 0 0 60px rgba(0, 212, 255, 0.4), 0 0 100px rgba(0, 212, 255, 0.2);
+            animation: titlePulse 3s ease-in-out infinite;
+        }
+
+        @keyframes titlePulse {
+            0%,
+            100% {
+                text-shadow: 0 0 20px rgba(0, 212, 255, 0.8), 0 0 60px rgba(0, 212, 255, 0.4);
+            }
+            50% {
+                text-shadow: 0 0 30px rgba(0, 212, 255, 1), 0 0 80px rgba(0, 212, 255, 0.6), 0 0 120px rgba(0, 212, 255, 0.3);
+            }
+        }
+
+        .subtitle {
+            font-size: clamp(0.8rem, 2vw, 1.2rem);
+            letter-spacing: 0.3em;
+            color: var(--text-dim);
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        .section-label {
+            font-size: clamp(0.9rem, 1.8vw, 1.2rem);
+            letter-spacing: 0.25em;
+            color: var(--cyan);
+            margin: 20px 0 12px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .ship-cards {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 12px 0;
+        }
+
+        .ship-card {
+            background: rgba(0, 15, 30, 0.7);
+            border: 2px solid rgba(0, 180, 255, 0.25);
+            border-radius: 14px;
+            padding: 18px 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 160px;
+            min-width: 140px;
+            position: relative;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .ship-card:hover {
+            border-color: var(--cyan);
+            box-shadow: var(--glow), 0 6px 25px rgba(0, 0, 0, 0.5);
+            transform: translateY(-4px);
+        }
+
+        .ship-card.selected {
+            border-color: var(--cyan-bright);
+            box-shadow: var(--glow-strong), 0 6px 30px rgba(0, 212, 255, 0.4);
+            background: rgba(0, 30, 60, 0.8);
+            transform: translateY(-4px) scale(1.03);
+        }
+
+        .ship-card .ship-icon {
+            font-size: 2.8rem;
+            margin-bottom: 8px;
+            display: block;
+            filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.5));
+        }
+
+        .ship-card .ship-name {
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: 0.1em;
+            color: var(--cyan-bright);
+            margin-bottom: 4px;
+        }
+
+        .ship-card .ship-desc {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-bottom: 10px;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            margin: 4px 0;
+        }
+
+        .stat-row .stat-label {
+            width: 32px;
+            text-align: left;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-bar {
+            flex: 1;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .stat-bar .stat-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: var(--cyan);
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.6);
+            transition: width 0.3s ease;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 14px 32px;
+            border: 2px solid var(--cyan);
+            border-radius: 30px;
+            background: rgba(0, 20, 40, 0.7);
+            color: var(--cyan-bright);
+            font-size: clamp(0.85rem, 1.8vw, 1.1rem);
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            margin: 6px;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+        }
+
+        .btn:hover {
+            background: rgba(0, 40, 80, 0.8);
+            box-shadow: var(--glow);
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-primary {
+            background: rgba(0, 80, 120, 0.6);
+            border-color: var(--cyan-bright);
+            box-shadow: var(--glow);
+        }
+        .btn-primary:hover {
+            background: rgba(0, 120, 160, 0.7);
+            box-shadow: var(--glow-strong);
+        }
+
+        .btn-small {
+            padding: 8px 18px;
+            font-size: 0.7rem;
+            border-radius: 20px;
+            letter-spacing: 0.1em;
+        }
+
+        .quality-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 8px 0;
+        }
+        .quality-btn {
+            padding: 6px 16px;
+            border: 1px solid rgba(0, 180, 255, 0.4);
+            border-radius: 16px;
+            background: rgba(0, 15, 30, 0.6);
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            transition: all 0.25s;
+        }
+        .quality-btn.active {
+            border-color: var(--cyan-bright);
+            color: var(--cyan-bright);
+            box-shadow: var(--glow);
+            background: rgba(0, 40, 70, 0.7);
+        }
+        .quality-btn:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        #hud {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+            display: none;
+        }
+        #hud.active {
+            display: block;
+        }
+
+        .hud-panel {
+            position: absolute;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            font-size: clamp(0.6rem, 1.2vw, 0.8rem);
+            letter-spacing: 0.06em;
+            pointer-events: auto;
+            min-width: 120px;
+        }
+
+        .hud-panel .hud-label {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            display: block;
+        }
+        .hud-panel .hud-value {
+            font-size: clamp(0.7rem, 1.5vw, 1rem);
+            font-weight: 700;
+            color: var(--cyan-bright);
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+        .hud-panel .hud-value.dim {
+            color: var(--text-dim);
+            font-weight: 400;
+            font-size: 0.7rem;
+        }
+
+        #hud-position {
+            top: 12px;
+            left: 12px;
+            text-align: left;
+        }
+        #hud-planet {
+            top: 12px;
+            right: 12px;
+            text-align: right;
+        }
+        #hud-compass {
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            min-width: 180px;
+        }
+        #hud-speed {
+            bottom: 12px;
+            left: 12px;
+            text-align: left;
+        }
+        #hud-score {
+            bottom: 12px;
+            right: 12px;
+            text-align: right;
+        }
+        #hud-energy {
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            min-width: 200px;
+        }
+
+        .compass-strip {
+            display: flex;
+            gap: 12px;
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            letter-spacing: 0.1em;
+            justify-content: center;
+        }
+        .compass-strip .compass-active {
+            color: var(--cyan-bright);
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(0, 212, 255, 0.7);
+        }
+
+        .bar-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: var(--cyan);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.6);
+            transition: width 0.2s ease;
+        }
+        .bar-fill.boost-fill {
+            background: #ff8800;
+            box-shadow: 0 0 12px rgba(255, 136, 0, 0.7);
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: var(--cyan);
+            box-shadow: 0 0 8px rgba(0, 212, 255, 0.7);
+        }
+        #crosshair::before {
+            width: 2px;
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        #crosshair::after {
+            width: 100%;
+            height: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        #crosshair .dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--cyan-bright);
+            box-shadow: 0 0 12px rgba(0, 255, 204, 0.9);
+        }
+
+        .target-marker {
+            position: absolute;
+            pointer-events: none;
+            color: var(--cyan-bright);
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            animation: markerPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes markerPulse {
+            0%,
+            100% {
+                opacity: 0.7;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
+        #mobile-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 6;
+            pointer-events: none;
+            display: none;
+        }
+        #mobile-controls.active {
+            display: block;
+        }
+
+        .mobile-btn {
+            position: absolute;
+            pointer-events: auto;
+            background: var(--glass-bg);
+            border: 1.5px solid var(--glass-border);
+            border-radius: 50%;
+            width: 52px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            color: var(--cyan-bright);
+            box-shadow: 0 0 12px rgba(0, 212, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .mobile-btn:active,
+        .mobile-btn.pressed {
+            background: rgba(0, 60, 100, 0.8);
+            box-shadow: var(--glow);
+            transform: scale(0.92);
+        }
+        .mobile-btn.wide {
+            width: 64px;
+            height: 64px;
+            font-size: 0.7rem;
+        }
+
+        #joy-zone {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 42%;
+            height: 100%;
+            pointer-events: auto;
+            z-index: 7;
+            touch-action: none;
+        }
+
+        #joy-base {
+            position: absolute;
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            border: 2px solid var(--glass-border);
+            background: rgba(0, 20, 40, 0.5);
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.25);
+            pointer-events: none;
+            display: none;
+            left: 50%;
+            bottom: 120px;
+            transform: translateX(-50%);
+        }
+        #joy-base.visible {
+            display: block;
+        }
+        #joy-knob {
+            position: absolute;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(0, 180, 255, 0.6);
+            border: 2px solid var(--cyan-bright);
+            box-shadow: var(--glow);
+            pointer-events: none;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            transition: none;
+        }
+
+        #swipe-zone {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 58%;
+            height: 100%;
+            pointer-events: auto;
+            z-index: 7;
+            touch-action: none;
+        }
+
+        #portrait-warning {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+            background: rgba(0, 8, 16, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            pointer-events: auto;
+        }
+        #portrait-warning.active {
+            display: flex;
+        }
+        #portrait-warning .rotate-icon {
+            font-size: 3rem;
+            animation: rotateIcon 2s ease-in-out infinite;
+            display: block;
+            margin-bottom: 16px;
+        }
+        @keyframes rotateIcon {
+            0%,
+            100% {
+                transform: rotate(0deg);
+            }
+            50% {
+                transform: rotate(90deg);
+            }
+        }
+
+        #webgl-fallback {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            background: var(--dark);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+        #webgl-fallback.active {
+            display: flex;
+        }
+
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            pointer-events: none;
+            font-size: clamp(1rem, 3vw, 1.8rem);
+            font-weight: 900;
+            letter-spacing: 0.2em;
+            color: var(--cyan-bright);
+            text-shadow: var(--glow-strong);
+            animation: toastAnim 2s ease-out forwards;
+        }
+        @keyframes toastAnim {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.6);
+            }
+            20% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+            40% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .discovery-badge {
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 22;
+            pointer-events: none;
+            font-size: clamp(1.5rem, 4vw, 3rem);
+            font-weight: 900;
+            letter-spacing: 0.2em;
+            color: #ffcc00;
+            text-shadow: 0 0 30px rgba(255, 204, 0, 0.9), 0 0 60px rgba(255, 204, 0, 0.5);
+            animation: discoveryAnim 3s ease-out forwards;
+        }
+        @keyframes discoveryAnim {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.3);
+            }
+            15% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+            30% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            70% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1) translateY(-40px);
+            }
+        }
+
+        .audio-toggle {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 30;
+            pointer-events: auto;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: var(--cyan-bright);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+            transition: all 0.2s;
+        }
+        .audio-toggle:hover {
+            box-shadow: var(--glow);
+        }
+
+        .fullscreen-btn {
+            position: fixed;
+            top: 12px;
+            right: 60px;
+            z-index: 30;
+            pointer-events: auto;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: var(--cyan-bright);
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+            transition: all 0.2s;
+        }
+        .fullscreen-btn:hover {
+            box-shadow: var(--glow);
+        }
+
+        @media (max-width: 768px) {
+            .glass-panel {
+                padding: 16px 14px;
+                border-radius: 12px;
+            }
+            .ship-card {
+                width: 120px;
+                min-width: 100px;
+                padding: 12px 10px;
+            }
+            .ship-card .ship-icon {
+                font-size: 2rem;
+            }
+            .ship-card .ship-name {
+                font-size: 0.8rem;
+            }
+            .hud-panel {
+                padding: 6px 10px;
+                border-radius: 8px;
+                font-size: 0.55rem;
+                min-width: 80px;
+            }
+            .mobile-btn {
+                width: 44px;
+                height: 44px;
+                font-size: 0.55rem;
+            }
+            .mobile-btn.wide {
+                width: 54px;
+                height: 54px;
+                font-size: 0.6rem;
+            }
+            #joy-base {
+                width: 90px;
+                height: 90px;
+                bottom: 100px;
+            }
+            #joy-knob {
+                width: 40px;
+                height: 40px;
+            }
+        }
+
+        @media (orientation: portrait) and (max-width: 768px) {
+            #portrait-warning.active {
+                display: flex;
+            }
+        }
+        @media (orientation: landscape) {
+            #portrait-warning.active {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+    </div>
+
+    <div id="webgl-fallback">
+        <div class="glass-panel">
+            <h2 style="font-size:1.5rem;color:#ff4444;margin-bottom:12px;">⚠ WEBGL TIDAK TERSEDIA</h2>
+            <p style="color:var(--text-dim);margin-bottom:16px;">Browser atau perangkat Anda tidak mendukung grafis 3D.<br>Silakan gunakan browser modern yang mendukung WebGL.</p>
+        </div>
+    </div>
+
+    <div id="portrait-warning">
+        <div>
+            <span class="rotate-icon">📱</span>
+            <h2 style="font-size:1.2rem;color:var(--cyan-bright);margin-bottom:8px;">PUTAR PERANGKAT</h2>
+            <p style="color:var(--text-dim);font-size:0.9rem;">Putar ke LANDSCAPE untuk pengalaman terbaik</p>
+        </div>
+    </div>
+
+    <div id="menu-overlay" class="overlay">
+        <div class="glass-panel" style="max-width:700px;width:95%;">
+            <div class="title-glow">STELLARDRIFT</div>
+            <div class="subtitle">Penjelajahan Luar Angkasa Tanpa Batas</div>
+            <div class="section-label">— Pilih Pesawatmu —</div>
+            <div class="ship-cards" id="ship-cards">
+                <div class="ship-card selected" data-ship="AQ-01" onclick="selectShip('AQ-01')">
+                    <span class="ship-icon">🚀</span>
+                    <div class="ship-name">AQ-01 AQUILA</div>
+                    <div class="ship-desc">Penjelajah seimbang</div>
+                    <div class="stat-row"><span class="stat-label">KEC</span><div class="stat-bar"><div class="stat-fill" style="width:70%"></div></div></div>
+                    <div class="stat-row"><span class="stat-label">LIN</span><div class="stat-bar"><div class="stat-fill" style="width:70%"></div></div></div>
+                    <div class="stat-row"><span class="stat-label">TEN</span><div class="stat-bar"><div class="stat-fill" style="width:70%"></div></div></div>
+                </div>
+                <div class="ship-card" data-ship="NM-02" onclick="selectShip('NM-02')">
+                    <span class="ship-icon">⚡</span>
+                    <div class="ship-name">NM-02 NOMAD</div>
+                    <div class="ship-desc">Sangat lincah &amp; cepat</div>
+                    <div class="stat-row"><span class="stat-label">KEC</span><div class="stat-bar"><div class="stat-fill" style="width:95%"></div></div></div>
+                    <div class="stat-row"><span class="stat-label">LIN</span><div class="stat-bar"><div class="stat-fill" style="width:90%"></div></div></div>
+                    <div class="stat-row"><span class="stat-label">TEN</span><div class="stat-bar"><div class="stat-fill" style="width:45%"></div></div></div>
+                </div>
+                <div class="ship-card" data-ship="TT-03" onclick="selectShip('TT-03')">
+                    <span class="ship-icon">🛡️</span>
+                    <div class="ship-name">TT-03 TITAN</div>
+                    <div class="ship-desc">Kokoh &amp; tenaga besar</div>
+                    <div class="stat-row"><span class="stat-label">KEC</span><div class="stat-bar"><div class="stat-fill" style="width:45%"></div></div></div>
+                    <div class="stat-row"><span class="stat-label">LIN</span><div class="stat-bar"><div class="stat-fill" style="width:50%"></div></div></div>
+                    <div class="stat-row"><span class="stat-label">TEN</span><div class="stat-bar"><div class="stat-fill" style="width:95%"></div></div></div>
+                </div>
+            </div>
+            <div class="section-label">— Kualitas Grafis —</div>
+            <div class="quality-row" id="quality-row">
+                <button class="quality-btn" data-q="LOW" onclick="setQuality('LOW')">LOW</button>
+                <button class="quality-btn active" data-q="MEDIUM" onclick="setQuality('MEDIUM')">MEDIUM</button>
+                <button class="quality-btn" data-q="HIGH" onclick="setQuality('HIGH')">HIGH</button>
+            </div>
+            <div style="margin-top:16px;display:flex;flex-wrap:wrap;justify-content:center;">
+                <button class="btn btn-primary" onclick="startNewGame()">▶ Mulai Penjelajahan</button>
+                <button class="btn" onclick="continueGame()">⟳ Lanjutkan Petualangan</button>
+            </div>
+            <div style="margin-top:10px;display:flex;justify-content:center;gap:10px;">
+                <button class="btn btn-small" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+                <button class="btn btn-small" onclick="toggleAudio()">🔊 Audio</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="hud">
+        <div id="crosshair"><span class="dot"></span></div>
+        <div class="hud-panel" id="hud-position">
+            <span class="hud-label">POSISI</span>
+            <span class="hud-value" id="hud-pos-x">X: 0</span>
+            <span class="hud-value" id="hud-pos-y">Y: 0</span>
+            <span class="hud-value" id="hud-pos-z">Z: 0</span>
+        </div>
+        <div class="hud-panel" id="hud-planet">
+            <span class="hud-label">PLANET TERDEKAT</span>
+            <span class="hud-value" id="hud-planet-name">—</span><br>
+            <span class="hud-value dim" id="hud-planet-dist">—</span>
+        </div>
+        <div class="hud-panel" id="hud-compass">
+            <span class="hud-label">KOMPAS</span>
+            <div class="compass-strip" id="compass-strip">
+                <span data-dir="N">N</span><span data-dir="NE">NE</span><span data-dir="E">E</span><span data-dir="SE">SE</span><span data-dir="S">S</span><span data-dir="SW">SW</span><span data-dir="W">W</span><span data-dir="NW">NW</span>
+            </div>
+            <span class="hud-value dim" id="hud-heading">HDG: 000°</span>
+            <span class="hud-value dim" id="hud-pitch">PTC: 00°</span>
+        </div>
+        <div class="hud-panel" id="hud-speed">
+            <span class="hud-label">KECEPATAN</span>
+            <span class="hud-value" id="hud-speed-val">0 m/s</span>
+        </div>
+        <div class="hud-panel" id="hud-score">
+            <span class="hud-label">SKOR</span>
+            <span class="hud-value" id="hud-score-val">0</span><br>
+            <span class="hud-value dim" id="hud-planets-found">PLANETS: 0/5</span><br>
+            <span class="hud-value dim" id="hud-distance">DISTANCE: 0.0 KM</span>
+        </div>
+        <div class="hud-panel" id="hud-energy">
+            <span class="hud-label">ENERGY</span>
+            <div class="bar-container"><div class="bar-fill" id="energy-bar" style="width:100%"></div></div>
+            <span class="hud-label" style="margin-top:4px;">BOOST</span>
+            <div class="bar-container"><div class="bar-fill boost-fill" id="boost-bar" style="width:100%"></div></div>
+        </div>
+    </div>
+
+    <div id="mobile-controls">
+        <div id="joy-zone"></div>
+        <div id="joy-base"><div id="joy-knob"></div></div>
+        <div id="swipe-zone"></div>
+        <button class="mobile-btn wide" id="btn-boost" style="right:20px;bottom:130px;">BOOST</button>
+        <button class="mobile-btn" id="btn-up" style="right:90px;bottom:80px;">▲</button>
+        <button class="mobile-btn" id="btn-down" style="right:90px;bottom:20px;">▼</button>
+        <button class="mobile-btn" id="btn-rollL" style="right:20px;bottom:70px;">⟲</button>
+        <button class="mobile-btn" id="btn-rollR" style="right:150px;bottom:70px;">⟳</button>
+        <button class="mobile-btn" id="btn-pause" style="right:150px;bottom:20px;">⏸</button>
+    </div>
+
+    <div id="pause-overlay" class="overlay hidden">
+        <div class="glass-panel" style="max-width:400px;">
+            <h2 style="font-size:1.4rem;color:var(--cyan-bright);letter-spacing:0.15em;margin-bottom:20px;">PETUALANGAN DIJEDA</h2>
+            <button class="btn btn-primary" onclick="resumeGame()" style="display:block;width:100%;margin:6px 0;">▶ LANJUTKAN</button>
+            <button class="btn" onclick="returnToMenu()" style="display:block;width:100%;margin:6px 0;">🏠 KEMBALI KE MENU</button>
+            <button class="btn" onclick="restartGame()" style="display:block;width:100%;margin:6px 0;">🔄 RESTART PERJALANAN</button>
+        </div>
+    </div>
+
+    <button class="audio-toggle" id="audio-toggle-btn" onclick="toggleAudio()" style="display:none;">🔊</button>
+    <button class="fullscreen-btn" id="fullscreen-toggle-btn" onclick="toggleFullscreen()" style="display:none;">⛶</button>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js">
+    </script>
+    <script>
+        (function() {
+            'use strict';
+
+            // ==================== WEBGL CHECK ====================
+            function checkWebGL() {
+                try {
+                    const c = document.createElement('canvas');
+                    return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext(
+                        'experimental-webgl')));
+                } catch (e) { return false; }
+            }
+            if (!checkWebGL()) {
+                document.getElementById('webgl-fallback').classList.add('active');
+                document.getElementById('menu-overlay').classList.add('hidden');
+                return;
+            }
+
+            // ==================== CONSTANTS ====================
+            const PLANET_DATA = [
+                { name: 'CINDER', color: 0xcc4422, radius: 28, pos: { x: 250, y: -40, z: 180 },
+                desc: 'Planet vulkanik' },
+                { name: 'AETHER', color: 0x2288cc, radius: 35, pos: { x: -300, y: 60, z: 250 },
+                    desc: 'Planet gas biru' },
+                { name: 'NOVA', color: 0xeeeeff, radius: 22, pos: { x: 180, y: 120, z: -200 },
+                    desc: 'Planet bercahaya' },
+                { name: 'TITANIS', color: 0xddaa33, radius: 45, pos: { x: -200, y: -80, z: -150 },
+                    desc: 'Planet raksasa' },
+                { name: 'LUMINA', color: 0xaa55ff, radius: 30, pos: { x: 320, y: 40, z: -300 },
+                    desc: 'Planet misterius' }
+            ];
+
+            const SHIP_STATS = {
+                'AQ-01': { speed: 1.0, agility: 1.0, power: 1.0, color: 0x00ccff, boostMult: 1.8,
+                    scale: 1.0 },
+                'NM-02': { speed: 1.5, agility: 1.4, power: 0.7, color: 0x44ff88, boostMult: 2.2,
+                    scale: 0.8 },
+                'TT-03': { speed: 0.7, agility: 0.7, power: 1.6, color: 0xff8844, boostMult: 1.5,
+                    scale: 1.3 }
+            };
+
+            // ==================== STATE ====================
+            let state = {
+                selectedShip: 'AQ-01',
+                quality: 'MEDIUM',
+                audioOn: true,
+                gameActive: false,
+                paused: false,
+                score: 0,
+                discoveredPlanets: [],
+                collectiblesTaken: 0,
+                distanceTraveled: 0,
+                shipPosition: { x: 0, y: 0, z: 0 },
+                shipHeading: 0,
+                shipPitch: 0,
+                shipRoll: 0,
+                boostAmount: 100,
+                energy: 100,
+                speed: 0,
+                lastTime: 0,
+                isMobile: false,
+                isTouchDevice: false,
+                isPortrait: false,
+                fullscreen: false,
+            };
+
+            // ==================== AUDIO SYSTEM ====================
+            const AudioSys = {
+                ctx: null,
+                engineOsc: null,
+                engineGain: null,
+                engineFilter: null,
+                boostOsc: null,
+                boostGain: null,
+                initialized: false,
+
+                init() {
+                    if (this.initialized) return;
+                    try {
+                        this.ctx = new(window.AudioContext || window.webkitAudioContext)();
+                        this.initialized = true;
+                    } catch (e) {
+                        console.warn('Audio not supported');
+                        return;
+                    }
+                    this.startEngineSound();
+                },
+
+                startEngineSound() {
+                    if (!this.ctx || !state.audioOn) return;
+                    try {
+                        this.engineOsc = this.ctx.createOscillator();
+                        this.engineGain = this.ctx.createGain();
+                        this.engineFilter = this.ctx.createBiquadFilter();
+                        this.engineOsc.type = 'sawtooth';
+                        this.engineOsc.frequency.value = 60;
+                        this.engineFilter.type = 'lowpass';
+                        this.engineFilter.frequency.value = 200;
+                        this.engineGain.gain.value = 0.04;
+                        this.engineOsc.connect(this.engineFilter);
+                        this.engineFilter.connect(this.engineGain);
+                        this.engineGain.connect(this.ctx.destination);
+                        this.engineOsc.start();
+                    } catch (e) {}
+                },
+
+                updateEngine(intensity) {
+                    if (!this.ctx || !this.engineOsc || !this.engineGain) return;
+                    if (!state.audioOn || !state.gameActive || state.paused) {
+                        this.engineGain.gain.value = 0;
+                        return;
+                    }
+                    const baseFreq = 50 + intensity * 80;
+                    const vol = 0.03 + intensity * 0.06;
+                    this.engineOsc.frequency.setTargetAtTime(baseFreq, this.ctx.currentTime, 0.1);
+                    this.engineGain.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.1);
+                },
+
+                playBoost() {
+                    if (!this.ctx || !state.audioOn) return;
+                    try {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.4);
+                        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.5);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start();
+                        osc.stop(this.ctx.currentTime + 0.5);
+                    } catch (e) {}
+                },
+
+                playCollectible() {
+                    if (!this.ctx || !state.audioOn) return;
+                    try {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+                        osc.frequency.exponentialRampToValueAtTime(1600, this.ctx.currentTime + 0.15);
+                        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start();
+                        osc.stop(this.ctx.currentTime + 0.3);
+                    } catch (e) {}
+                },
+
+                playDiscovery() {
+                    if (!this.ctx || !state.audioOn) return;
+                    try {
+                        [523, 659, 784, 1047].forEach((freq, i) => {
+                            const osc = this.ctx.createOscillator();
+                            const gain = this.ctx.createGain();
+                            osc.type = 'sine';
+                            osc.frequency.value = freq;
+                            gain.gain.setValueAtTime(0.08, this.ctx.currentTime + i * 0.12);
+                            gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + i *
+                                0.12 + 0.4);
+                            osc.connect(gain);
+                            gain.connect(this.ctx.destination);
+                            osc.start(this.ctx.currentTime + i * 0.12);
+                            osc.stop(this.ctx.currentTime + i * 0.12 + 0.4);
+                        });
+                    } catch (e) {}
+                },
+
+                playUI() {
+                    if (!this.ctx || !state.audioOn) return;
+                    try {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = 600;
+                        gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start();
+                        osc.stop(this.ctx.currentTime + 0.1);
+                    } catch (e) {}
+                },
+
+                stopAll() {
+                    if (this.engineOsc) {
+                        try { this.engineOsc.stop(); } catch (e) {}
+                        this.engineOsc = null;
+                    }
+                    if (this.engineGain) { this.engineGain = null; }
+                    this.initialized = false;
+                }
+            };
+
+            // ==================== DOM REFS ====================
+            const canvas = document.getElementById('game-canvas');
+            const menuOverlay = document.getElementById('menu-overlay');
+            const pauseOverlay = document.getElementById('pause-overlay');
+            const hud = document.getElementById('hud');
+            const mobileControls = document.getElementById('mobile-controls');
+            const portraitWarning = document.getElementById('portrait-warning');
+            const joyBase = document.getElementById('joy-base');
+            const joyKnob = document.getElementById('joy-knob');
+            const joyZone = document.getElementById('joy-zone');
+            const swipeZone = document.getElementById('swipe-zone');
+            const audioToggleBtn = document.getElementById('audio-toggle-btn');
+            const fullscreenToggleBtn = document.getElementById('fullscreen-toggle-btn');
+
+            // ==================== THREE.JS SETUP ====================
+            let renderer, scene, camera;
+            let shipGroup, shipMesh, engineGlow, engineLight;
+            let starField, nebulaGroup;
+            let planets = [];
+            let asteroids = [];
+            let collectibles = [];
+            let engineParticles = [];
+            let collectedEffects = [];
+            let targetMarkers = [];
+            let sunMesh, sunLight;
+            let clock;
+
+            function initThreeJS() {
+                renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: state.quality !== 'LOW',
+                    alpha: false });
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, state.quality === 'HIGH' ? 2 : state
+                    .quality === 'MEDIUM' ? 1.5 : 1));
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.shadowMap.enabled = false;
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                renderer.toneMappingExposure = 1.0;
+
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x000810);
+                scene.fog = new THREE.Fog(0x000810, 200, 1200);
+
+                camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 3000);
+                camera.position.set(0, 12, -20);
+                camera.lookAt(0, 0, 0);
+
+                clock = new THREE.Clock();
+            }
+
+            // ==================== WORLD GENERATION ====================
+            function createStarField() {
+                const starCount = state.quality === 'HIGH' ? 8000 : state.quality === 'MEDIUM' ? 4000 : 2000;
+                const positions = new Float32Array(starCount * 3);
+                const colors = new Float32Array(starCount * 3);
+                for (let i = 0; i < starCount; i++) {
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    const r = 500 + Math.random() * 800;
+                    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                    positions[i * 3 + 1] = r * Math.cos(phi);
+                    positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+                    const brightness = 0.4 + Math.random() * 0.6;
+                    const tint = Math.random();
+                    colors[i * 3] = brightness * (tint > 0.8 ? 1 : 0.8);
+                    colors[i * 3 + 1] = brightness * (tint > 0.7 ? 1 : 0.8);
+                    colors[i * 3 + 2] = brightness * (tint > 0.6 ? 1 : 1);
+                }
+                const geo = new THREE.BufferGeometry();
+                geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                const mat = new THREE.PointsMaterial({ size: 1.8, vertexColors: true, sizeAttenuation: true,
+                    transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+                starField = new THREE.Points(geo, mat);
+                scene.add(starField);
+            }
+
+            function createNebula() {
+                nebulaGroup = new THREE.Group();
+                const nebulaCount = state.quality === 'HIGH' ? 12 : state.quality === 'MEDIUM' ? 8 : 5;
+                const nebulaColors = [0x003355, 0x330066, 0x002244, 0x441155, 0x001133, 0x224488];
+                for (let i = 0; i < nebulaCount; i++) {
+                    const color = nebulaColors[i % nebulaColors.length];
+                    const size = 150 + Math.random() * 250;
+                    const geo = new THREE.SphereGeometry(size, 16, 16);
+                    const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.06 +
+                            Math.random() * 0.08, blending: THREE.AdditiveBlending, depthWrite: false,
+                        side: THREE.BackSide });
+                    const neb = new THREE.Mesh(geo, mat);
+                    neb.position.set((Math.random() - 0.5) * 800, (Math.random() - 0.5) * 600, (Math.random() -
+                        0.5) * 800);
+                    nebulaGroup.add(neb);
+                }
+                scene.add(nebulaGroup);
+            }
+
+            function createSun() {
+                const sunGeo = new THREE.SphereGeometry(30, 32, 32);
+                const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
+                sunMesh = new THREE.Mesh(sunGeo, sunMat);
+                sunMesh.position.set(-100, 150, -120);
+                scene.add(sunMesh);
+                sunLight = new THREE.PointLight(0xffdd88, 1.5, 600);
+                sunLight.position.copy(sunMesh.position);
+                scene.add(sunLight);
+
+                const glowGeo = new THREE.SphereGeometry(38, 16, 16);
+                const glowMat = new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.3,
+                    blending: THREE.AdditiveBlending, depthWrite: false });
+                const glow = new THREE.Mesh(glowGeo, glowMat);
+                glow.position.copy(sunMesh.position);
+                scene.add(glow);
+                sunMesh.userData.glow = glow;
+            }
+
+            function createPlanets() {
+                PLANET_DATA.forEach((pd, idx) => {
+                    const geo = new THREE.SphereGeometry(pd.radius, 32, 32);
+                    const mat = new THREE.MeshStandardMaterial({ color: pd.color, roughness: 0.5,
+                        metalness: 0.2 });
+                    const planet = new THREE.Mesh(geo, mat);
+                    planet.position.set(pd.pos.x, pd.pos.y, pd.pos.z);
+                    planet.userData = { name: pd.name, radius: pd.radius, desc: pd.desc, index: idx,
+                        discovered: false };
+                    scene.add(planet);
+                    planets.push(planet);
+
+                    const ringChance = (idx === 3);
+                    if (ringChance) {
+                        const ringGeo = new THREE.TorusGeometry(pd.radius * 1.5, 3, 16, 64);
+                        const ringMat = new THREE.MeshStandardMaterial({ color: 0xccaa88, roughness: 0.6,
+                            metalness: 0.4, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+                        const ring = new THREE.Mesh(ringGeo, ringMat);
+                        ring.rotation.x = Math.PI / 3;
+                        ring.position.copy(planet.position);
+                        scene.add(ring);
+                        planet.userData.ring = ring;
+                    }
+                });
+            }
+
+            function createAsteroids() {
+                const astCount = state.quality === 'HIGH' ? 80 : state.quality === 'MEDIUM' ? 45 : 20;
+                const astGeo = new THREE.IcosahedronGeometry(1, 1);
+                for (let i = 0; i < astCount; i++) {
+                    const scale = 1.5 + Math.random() * 5;
+                    const mat = new THREE.MeshStandardMaterial({ color: 0x777788, roughness: 0.8,
+                        metalness: 0.1 });
+                    const ast = new THREE.Mesh(astGeo, mat);
+                    ast.scale.setScalar(scale);
+                    ast.position.set((Math.random() - 0.5) * 500, (Math.random() - 0.5) * 400, (Math.random() -
+                        0.5) * 500);
+                    ast.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                    ast.userData = { rotSpeed: { x: (Math.random() - 0.5) * 0.01, y: (Math.random() - 0.5) *
+                            0.01, z: (Math.random() - 0.5) * 0.01 } };
+                    scene.add(ast);
+                    asteroids.push(ast);
+                }
+            }
+
+            function createCollectibles() {
+                const colCount = state.quality === 'HIGH' ? 40 : state.quality === 'MEDIUM' ? 25 : 12;
+                const colGeo = new THREE.OctahedronGeometry(1.2, 0);
+                for (let i = 0; i < colCount; i++) {
+                    const mat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x00ffcc,
+                        emissiveIntensity: 0.6, roughness: 0.3, metalness: 0.2 });
+                    const col = new THREE.Mesh(colGeo, mat);
+                    col.position.set((Math.random() - 0.5) * 420, (Math.random() - 0.5) * 360, (Math.random() -
+                        0.5) * 420);
+                    col.userData = { collected: false, bobPhase: Math.random() * Math.PI * 2 };
+                    scene.add(col);
+                    collectibles.push(col);
+                }
+            }
+
+            // ==================== SHIP CREATION ====================
+            function createShip(type) {
+                if (shipGroup) {
+                    scene.remove(shipGroup);
+                }
+                shipGroup = new THREE.Group();
+                const stats = SHIP_STATS[type];
+                const s = stats.scale;
+                const c = stats.color;
+
+                const bodyGeo = new THREE.CylinderGeometry(1.2 * s, 0.8 * s, 4 * s, 8);
+                const bodyMat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.3, metalness: 0.7 });
+                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                body.rotation.x = Math.PI / 2;
+                body.position.z = 0;
+                shipGroup.add(body);
+
+                const noseGeo = new THREE.ConeGeometry(1.2 * s, 2 * s, 8);
+                const noseMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.2,
+                    metalness: 0.9 });
+                const nose = new THREE.Mesh(noseGeo, noseMat);
+                nose.rotation.x = -Math.PI / 2;
+                nose.position.z = 3 * s;
+                shipGroup.add(nose);
+
+                const wingGeo = new THREE.BoxGeometry(4 * s, 0.15 * s, 2 * s);
+                const wingMat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.3, metalness: 0.6 });
+                const leftWing = new THREE.Mesh(wingGeo, wingMat);
+                leftWing.position.set(-2.2 * s, 0, 0.3 * s);
+                leftWing.rotation.z = -0.1;
+                shipGroup.add(leftWing);
+                const rightWing = new THREE.Mesh(wingGeo, wingMat);
+                rightWing.position.set(2.2 * s, 0, 0.3 * s);
+                rightWing.rotation.z = 0.1;
+                shipGroup.add(rightWing);
+
+                const tailGeo = new THREE.BoxGeometry(1.5 * s, 1.2 * s, 0.4 * s);
+                const tailMat = new THREE.MeshStandardMaterial({ color: c, roughness: 0.4, metalness: 0.5 });
+                const tail = new THREE.Mesh(tailGeo, tailMat);
+                tail.position.set(0, 0.8 * s, -2 * s);
+                shipGroup.add(tail);
+
+                const engineGeo = new THREE.CylinderGeometry(0.4 * s, 0.5 * s, 1 * s, 8);
+                const engineMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6,
+                    metalness: 0.8 });
+                const engineL = new THREE.Mesh(engineGeo, engineMat);
+                engineL.rotation.x = Math.PI / 2;
+                engineL.position.set(-0.8 * s, 0, -2.2 * s);
+                shipGroup.add(engineL);
+                const engineR = new THREE.Mesh(engineGeo, engineMat);
+                engineR.rotation.x = Math.PI / 2;
+                engineR.position.set(0.8 * s, 0, -2.2 * s);
+                shipGroup.add(engineR);
+
+                engineGlow = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.5 * s, 8, 8),
+                    new THREE.MeshBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.7, blending: THREE
+                            .AdditiveBlending, depthWrite: false })
+                );
+                engineGlow.position.set(0, 0, -2.5 * s);
+                shipGroup.add(engineGlow);
+
+                engineLight = new THREE.PointLight(0x00ccff, 0.7, 20 * s);
+                engineLight.position.set(0, 0, -2.5 * s);
+                shipGroup.add(engineLight);
+
+                shipGroup.position.set(state.shipPosition.x, state.shipPosition.y, state.shipPosition.z);
+                shipGroup.rotation.set(state.shipPitch, state.shipHeading, state.shipRoll);
+                scene.add(shipGroup);
+                shipMesh = body;
+            }
+
+            function createEngineParticles() {
+                const count = state.quality === 'HIGH' ? 80 : state.quality === 'MEDIUM' ? 50 : 25;
+                const positions = new Float32Array(count * 3);
+                const geo = new THREE.BufferGeometry();
+                geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const mat = new THREE.PointsMaterial({ color: 0x00ccff, size: 0.5, transparent: true, opacity: 0.8,
+                    blending: THREE.AdditiveBlending, depthWrite: false });
+                const particles = new THREE.Points(geo, mat);
+                particles.visible = false;
+                scene.add(particles);
+                engineParticles = { mesh: particles, count: count, positions: positions, life: new Float32Array(
+                        count), active: new Array(count).fill(false) };
+            }
+
+            // ==================== INPUT HANDLING ====================
+            const keys = {};
+            let mouseDelta = { x: 0, y: 0 };
+            let isPointerDown = false;
+            let lastMouseX = 0;
+            let lastMouseY = 0;
+            let joystickActive = false;
+            let joystickTouchId = null;
+            let joystickCenter = { x: 0, y: 0 };
+            let joystickVector = { x: 0, y: 0 };
+            let swipeTouchId = null;
+            let swipeStart = { x: 0, y: 0 };
+            let swipeDelta = { x: 0, y: 0 };
+            let swipeActive = false;
+
+            function setupInput() {
+                document.addEventListener('keydown', (e) => {
+                    keys[e.key.toLowerCase()] = true;
+                    if (e.key === 'Shift' || e.key === ' ') keys['boost'] = true;
+                    if (e.key === 'Escape' && state.gameActive) { togglePause(); }
+                    if (e.key.toLowerCase() === 'c' && state.gameActive) { cycleCamera(); }
+                });
+                document.addEventListener('keyup', (e) => {
+                    keys[e.key.toLowerCase()] = false;
+                    if (e.key === 'Shift' || e.key === ' ') keys['boost'] = false;
+                });
+
+                canvas.addEventListener('pointerdown', (e) => {
+                    if (!state.gameActive || state.paused) return;
+                    isPointerDown = true;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    canvas.setPointerCapture(e.pointerId);
+                });
+                canvas.addEventListener('pointermove', (e) => {
+                    if (!isPointerDown || !state.gameActive || state.paused) return;
+                    mouseDelta.x += (e.clientX - lastMouseX) * 0.006;
+                    mouseDelta.y += (e.clientY - lastMouseY) * 0.004;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                });
+                canvas.addEventListener('pointerup', () => { isPointerDown = false; });
+                canvas.addEventListener('pointercancel', () => { isPointerDown = false; });
+
+                setupJoystick();
+                setupSwipeZone();
+                setupMobileButtons();
+                setupVisibilityAutoPause();
+            }
+
+            function setupJoystick() {
+                joyZone.addEventListener('pointerdown', (e) => {
+                    if (!state.gameActive || state.paused) return;
+                    joystickActive = true;
+                    joystickTouchId = e.pointerId;
+                    joystickCenter = { x: e.clientX, y: e.clientY };
+                    joyBase.style.left = e.clientX + 'px';
+                    joyBase.style.top = e.clientY + 'px';
+                    joyBase.style.bottom = 'auto';
+                    joyBase.style.transform = 'none';
+                    joyBase.classList.add('visible');
+                    joyKnob.style.left = '50%';
+                    joyKnob.style.top = '50%';
+                    joyKnob.style.transform = 'translate(-50%, -50%)';
+                    joyZone.setPointerCapture(e.pointerId);
+                });
+                joyZone.addEventListener('pointermove', (e) => {
+                    if (!joystickActive || e.pointerId !== joystickTouchId) return;
+                    const dx = e.clientX - joystickCenter.x;
+                    const dy = e.clientY - joystickCenter.y;
+                    const maxDist = 45;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const clampedDist = Math.min(dist, maxDist);
+                    const angle = Math.atan2(dy, dx);
+                    const clampedDx = Math.cos(angle) * clampedDist;
+                    const clampedDy = Math.sin(angle) * clampedDist;
+                    joystickVector.x = clampedDx / maxDist;
+                    joystickVector.y = clampedDy / maxDist;
+                    joyKnob.style.left = (50 + joystickVector.x * 45) + '%';
+                    joyKnob.style.top = (50 + joystickVector.y * 45) + '%';
+                    joyKnob.style.transform = 'translate(-50%, -50%)';
+                });
+                const resetJoystick = (e) => {
+                    if (e.pointerId !== joystickTouchId) return;
+                    joystickActive = false;
+                    joystickTouchId = null;
+                    joystickVector.x = 0;
+                    joystickVector.y = 0;
+                    joyBase.classList.remove('visible');
+                    joyKnob.style.left = '50%';
+                    joyKnob.style.top = '50%';
+                    joyKnob.style.transform = 'translate(-50%, -50%)';
+                };
+                joyZone.addEventListener('pointerup', resetJoystick);
+                joyZone.addEventListener('pointercancel', resetJoystick);
+            }
+
+            function setupSwipeZone() {
+                swipeZone.addEventListener('pointerdown', (e) => {
+                    if (!state.gameActive || state.paused) return;
+                    swipeActive = true;
+                    swipeTouchId = e.pointerId;
+                    swipeStart = { x: e.clientX, y: e.clientY };
+                    swipeDelta = { x: 0, y: 0 };
+                    swipeZone.setPointerCapture(e.pointerId);
+                });
+                swipeZone.addEventListener('pointermove', (e) => {
+                    if (!swipeActive || e.pointerId !== swipeTouchId) return;
+                    swipeDelta.x = (e.clientX - swipeStart.x) * 0.006;
+                    swipeDelta.y = (e.clientY - swipeStart.y) * 0.004;
+                    swipeStart = { x: e.clientX, y: e.clientY };
+                });
+                const resetSwipe = (e) => {
+                    if (e.pointerId !== swipeTouchId) return;
+                    swipeActive = false;
+                    swipeTouchId = null;
+                    swipeDelta = { x: 0, y: 0 };
+                };
+                swipeZone.addEventListener('pointerup', resetSwipe);
+                swipeZone.addEventListener('pointercancel', resetSwipe);
+            }
+
+            function setupMobileButtons() {
+                const btnBoost = document.getElementById('btn-boost');
+                const btnUp = document.getElementById('btn-up');
+                const btnDown = document.getElementById('btn-down');
+                const btnRollL = document.getElementById('btn-rollL');
+                const btnRollR = document.getElementById('btn-rollR');
+                const btnPause = document.getElementById('btn-pause');
+
+                const bindHold = (el, keyName) => {
+                    el.addEventListener('pointerdown', (e) => {
+                        e.preventDefault();
+                        keys[keyName] = true;
+                        el.classList.add('pressed');
+                        el.setPointerCapture(e.pointerId);
+                    });
+                    el.addEventListener('pointerup', () => { keys[keyName] = false;
+                        el.classList.remove('pressed'); });
+                    el.addEventListener('pointercancel', () => { keys[keyName] = false;
+                        el.classList.remove('pressed'); });
+                };
+
+                bindHold(btnBoost, 'boost');
+                bindHold(btnUp, 'r');
+                bindHold(btnDown, 'f');
+                bindHold(btnRollL, 'q');
+                bindHold(btnRollR, 'e');
+
+                btnPause.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    if (state.gameActive) togglePause();
+                });
+            }
+
+            function setupVisibilityAutoPause() {
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden && state.gameActive && !state.paused) {
+                        pauseGame();
+                    }
+                });
+                window.addEventListener('blur', () => {
+                    if (state.gameActive && !state.paused) pauseGame();
+                });
+            }
+
+            // ==================== SAVE SYSTEM ====================
+            function saveGame() {
+                if (!state.gameActive) return;
+                try {
+                    const saveData = {
+                        ship: state.selectedShip,
+                        score: Math.floor(state.score),
+                        planets: state.discoveredPlanets,
+                        collectibles: state.collectiblesTaken,
+                        distance: state.distanceTraveled,
+                        position: state.shipPosition,
+                        heading: state.shipHeading,
+                        pitch: state.shipPitch,
+                        roll: state.shipRoll,
+                        boost: state.boostAmount,
+                        energy: state.energy,
+                        quality: state.quality,
+                        timestamp: Date.now()
+                    };
+                    localStorage.setItem('stellardrift_save', JSON.stringify(saveData));
+                } catch (e) { console.warn('Save failed', e); }
+            }
+
+            function loadSave() {
+                try {
+                    const raw = localStorage.getItem('stellardrift_save');
+                    if (!raw) return null;
+                    return JSON.parse(raw);
+                } catch (e) { return null; }
+            }
+
+            function hasSave() {
+                return !!loadSave();
+            }
+
+            function applySave(saveData) {
+                if (!saveData) return;
+                state.selectedShip = saveData.ship || 'AQ-01';
+                state.score = saveData.score || 0;
+                state.discoveredPlanets = saveData.planets || [];
+                state.collectiblesTaken = saveData.collectibles || 0;
+                state.distanceTraveled = saveData.distance || 0;
+                state.shipPosition = saveData.position || { x: 0, y: 0, z: 0 };
+                state.shipHeading = saveData.heading || 0;
+                state.shipPitch = saveData.pitch || 0;
+                state.shipRoll = saveData.roll || 0;
+                state.boostAmount = saveData.boost ?? 100;
+                state.energy = saveData.energy ?? 100;
+                if (saveData.quality) state.quality = saveData.quality;
+            }
+
+            // ==================== MENU FUNCTIONS ====================
+            function selectShip(shipType) {
+                state.selectedShip = shipType;
+                AudioSys.playUI();
+                document.querySelectorAll('.ship-card').forEach(card => {
+                    card.classList.toggle('selected', card.dataset.ship === shipType);
+                });
+            }
+
+            function setQuality(q) {
+                state.quality = q;
+                AudioSys.playUI();
+                document.querySelectorAll('.quality-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.q === q);
+                });
+            }
+
+            function toggleAudio() {
+                state.audioOn = !state.audioOn;
+                const icon = state.audioOn ? '🔊' : '🔇';
+                audioToggleBtn.textContent = icon;
+                if (state.audioOn) {
+                    AudioSys.init();
+                } else {
+                    AudioSys.stopAll();
+                }
+                if (state.gameActive && state.audioOn) {
+                    AudioSys.init();
+                    AudioSys.startEngineSound();
+                }
+            }
+
+            function toggleFullscreen() {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    const el = document.documentElement;
+                    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+                    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                } else {
+                    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                }
+                state.fullscreen = !state.fullscreen;
+            }
+
+            function startNewGame() {
+                AudioSys.init();
+                AudioSys.playUI();
+                state.gameActive = true;
+                state.paused = false;
+                state.score = 0;
+                state.discoveredPlanets = [];
+                state.collectiblesTaken = 0;
+                state.distanceTraveled = 0;
+                state.shipPosition = { x: 0, y: 0, z: 0 };
+                state.shipHeading = 0;
+                state.shipPitch = 0;
+                state.shipRoll = 0;
+                state.boostAmount = 100;
+                state.energy = 100;
+                state.speed = 0;
+                beginGameplay();
+            }
+
+            function continueGame() {
+                const saveData = loadSave();
+                if (!saveData) {
+                    AudioSys.playUI();
+                    showToast('BELUM ADA SAVE');
+                    return;
+                }
+                AudioSys.init();
+                AudioSys.playUI();
+                applySave(saveData);
+                state.gameActive = true;
+                state.paused = false;
+                state.speed = 0;
+                beginGameplay();
+            }
+
+            function beginGameplay() {
+                menuOverlay.classList.add('hidden');
+                pauseOverlay.classList.add('hidden');
+                hud.classList.add('active');
+                audioToggleBtn.style.display = 'flex';
+                fullscreenToggleBtn.style.display = 'flex';
+                if (state.isMobile || state.isTouchDevice) {
+                    mobileControls.classList.add('active');
+                }
+                setupGameWorld();
+                state.lastTime = performance.now();
+                updateHUD();
+                AudioSys.init();
+                AudioSys.startEngineSound();
+            }
+
+            function setupGameWorld() {
+                if (renderer) {
+                    disposeWorld();
+                } else {
+                    initThreeJS();
+                }
+                createStarField();
+                createNebula();
+                createSun();
+                createPlanets();
+                createAsteroids();
+                createCollectibles();
+                createShip(state.selectedShip);
+                createEngineParticles();
+                createTargetMarkers();
+                camera.position.set(state.shipPosition.x, state.shipPosition.y + 10, state.shipPosition.z - 20);
+                camera.lookAt(state.shipPosition.x, state.shipPosition.y, state.shipPosition.z);
+            }
+
+            function disposeWorld() {
+                if (starField) { scene.remove(starField);
+                    starField.geometry.dispose();
+                    starField.material.dispose();
+                    starField = null; }
+                if (nebulaGroup) { scene.remove(nebulaGroup);
+                    nebulaGroup = null; }
+                if (sunMesh) { scene.remove(sunMesh);
+                    sunMesh.geometry.dispose();
+                    sunMesh.material.dispose();
+                    sunMesh = null; }
+                if (sunLight) { scene.remove(sunLight);
+                    sunLight = null; }
+                planets.forEach(p => { scene.remove(p);
+                    p.geometry.dispose();
+                    p.material.dispose(); if (p.userData.ring) { scene.remove(p.userData.ring);
+                        p.userData.ring.geometry.dispose();
+                        p.userData.ring.material.dispose(); } });
+                planets = [];
+                asteroids.forEach(a => { scene.remove(a);
+                    a.geometry.dispose();
+                    a.material.dispose(); });
+                asteroids = [];
+                collectibles.forEach(c => { scene.remove(c);
+                    c.geometry.dispose();
+                    c.material.dispose(); });
+                collectibles = [];
+                collectedEffects.forEach(e => { if (e.parent) e.parent.remove(e); });
+                collectedEffects = [];
+                if (shipGroup) { scene.remove(shipGroup);
+                    shipGroup = null; }
+                if (engineParticles.mesh) { scene.remove(engineParticles.mesh);
+                    engineParticles.mesh.geometry.dispose();
+                    engineParticles.mesh.material.dispose();
+                    engineParticles = { mesh: null, count: 0, positions: null, life: null, active: null }; }
+                targetMarkers.forEach(m => { if (m.parentNode) m.parentNode.removeChild(m); });
+                targetMarkers = [];
+            }
+
+            function createTargetMarkers() {
+                targetMarkers.forEach(m => { if (m.parentNode) m.parentNode.removeChild(m); });
+                targetMarkers = [];
+                planets.forEach(p => {
+                    const marker = document.createElement('div');
+                    marker.className = 'target-marker';
+                    marker.textContent = p.userData.name;
+                    marker.style.display = 'none';
+                    document.body.appendChild(marker);
+                    targetMarkers.push({ marker: marker, planet: p });
+                });
+            }
+
+            function cycleCamera() {
+                if (state.gameActive) {
+                    AudioSys.playUI();
+                    showToast('KAMERA: BELAKANG');
+                }
+            }
+
+            // ==================== PAUSE SYSTEM ====================
+            function togglePause() {
+                if (!state.gameActive) return;
+                if (state.paused) resumeGame();
+                else pauseGame();
+            }
+
+            function pauseGame() {
+                if (!state.gameActive || state.paused) return;
+                state.paused = true;
+                pauseOverlay.classList.remove('hidden');
+                AudioSys.playUI();
+                saveGame();
+            }
+
+            function resumeGame() {
+                if (!state.gameActive) return;
+                state.paused = false;
+                pauseOverlay.classList.add('hidden');
+                AudioSys.playUI();
+                state.lastTime = performance.now();
+            }
+
+            function returnToMenu() {
+                state.gameActive = false;
+                state.paused = false;
+                pauseOverlay.classList.add('hidden');
+                hud.classList.remove('active');
+                mobileControls.classList.remove('active');
+                audioToggleBtn.style.display = 'none';
+                fullscreenToggleBtn.style.display = 'none';
+                menuOverlay.classList.remove('hidden');
+                saveGame();
+                AudioSys.playUI();
+                if (renderer) disposeWorld();
+            }
+
+            function restartGame() {
+                state.gameActive = true;
+                state.paused = false;
+                state.score = 0;
+                state.discoveredPlanets = [];
+                state.collectiblesTaken = 0;
+                state.distanceTraveled = 0;
+                state.shipPosition = { x: 0, y: 0, z: 0 };
+                state.shipHeading = 0;
+                state.shipPitch = 0;
+                state.shipRoll = 0;
+                state.boostAmount = 100;
+                state.energy = 100;
+                state.speed = 0;
+                pauseOverlay.classList.add('hidden');
+                AudioSys.playUI();
+                setupGameWorld();
+                state.lastTime = performance.now();
+                updateHUD();
+            }
+
+            // ==================== TOAST ====================
+            function showToast(msg) {
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.textContent = msg;
+                document.body.appendChild(toast);
+                setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 2200);
+            }
+
+            function showDiscovery(name) {
+                const badge = document.createElement('div');
+                badge.className = 'discovery-badge';
+                badge.textContent = '✦ ' + name + ' DISCOVERED ✦';
+                document.body.appendChild(badge);
+                setTimeout(() => { if (badge.parentNode) badge.parentNode.removeChild(badge); }, 3200);
+            }
+
+            // ==================== GAME LOOP ====================
+            let cameraMode = 'chase';
+            let cameraFOVBoost = 0;
+
+            function gameLoop(timestamp) {
+                requestAnimationFrame(gameLoop);
+                if (!state.gameActive || state.paused) return;
+                const dt = Math.min((timestamp - state.lastTime) / 1000, 0.1);
+                state.lastTime = timestamp;
+
+                updateShip(dt);
+                updateCamera(dt);
+                updateParticles(dt);
+                updateAsteroids(dt);
+                updateCollectibles(dt);
+                updatePlanetProximity(dt);
+                updateHUD();
+                updateTargetMarkers();
+                updateEngineSound();
+
+                renderer.render(scene, camera);
+
+                if (Math.floor(timestamp / 5000) > Math.floor((timestamp - dt * 1000) / 5000)) {
+                    saveGame();
+                }
+            }
+
+            function updateShip(dt) {
+                const stats = SHIP_STATS[state.selectedShip];
+                const baseSpeed = 25 * stats.speed;
+                const forwardInput = (keys['w'] || joystickVector.y < -0.15) ? 1 : (keys['s'] || joystickVector.y >
+                    0.15) ? -0.5 : 0;
+                const turnInput = (keys['d'] || joystickVector.x > 0.15) ? 1 : (keys['a'] || joystickVector.x < -
+                    0.15) ? -1 : 0;
+                const upInput = keys['r'] ? 1 : keys['f'] ? -1 : 0;
+                const rollInput = keys['e'] ? 1 : keys['q'] ? -1 : 0;
+                const boostInput = keys['boost'] || keys[' '] || keys['shift'];
+
+                const agility = 2.0 * stats.agility;
+                state.shipHeading += turnInput * agility * dt;
+                state.shipPitch += upInput * agility * 0.6 * dt;
+                if (keys['w'] || keys['s'] || joystickVector.y !== 0) {
+                    state.shipPitch += forwardInput * 0.2 * agility * dt;
+                }
+                state.shipRoll += rollInput * agility * 1.2 * dt;
+
+                state.shipPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, state.shipPitch));
+                state.shipRoll = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, state.shipRoll));
+
+                if (swipeActive) {
+                    state.shipHeading += swipeDelta.x * 1.5 * dt * 4;
+                    state.shipPitch += swipeDelta.y * 1.2 * dt * 4;
+                    state.shipPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, state.shipPitch));
+                    swipeDelta.x *= 0.95;
+                    swipeDelta.y *= 0.95;
+                }
+
+                if (isPointerDown && !state.isTouchDevice) {
+                    state.shipHeading += mouseDelta.x * 1.2 * dt * 4;
+                    state.shipPitch += mouseDelta.y * 0.8 * dt * 4;
+                    state.shipPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, state.shipPitch));
+                    mouseDelta.x *= 0.95;
+                    mouseDelta.y *= 0.95;
+                }
+
+                const boostActive = boostInput && state.boostAmount > 0 && state.energy > 5;
+                const speedMult = boostActive ? stats.boostMult : 1.0;
+                const targetSpeed = forwardInput * baseSpeed * speedMult;
+                const acceleration = boostActive ? 45 : 25;
+                state.speed += (targetSpeed - state.speed) * Math.min(1, acceleration * dt);
+
+                if (boostActive) {
+                    state.boostAmount = Math.max(0, state.boostAmount - 18 * dt);
+                    state.energy = Math.max(0, state.energy - 5 * dt);
+                    cameraFOVBoost = Math.min(1, cameraFOVBoost + dt * 5);
+                    AudioSys.playBoost();
+                    if (Math.random() < 0.3) createBoostParticle();
+                } else {
+                    state.boostAmount = Math.min(100, state.boostAmount + 6 * dt);
+                    state.energy = Math.min(100, state.energy + 2 * dt);
+                    cameraFOVBoost = Math.max(0, cameraFOVBoost - dt * 4);
+                }
+
+                const fx = Math.sin(state.shipHeading) * Math.cos(state.shipPitch);
+                const fy = Math.sin(state.shipPitch);
+                const fz = Math.cos(state.shipHeading) * Math.cos(state.shipPitch);
+                const moveSpeed = state.speed * dt;
+                state.shipPosition.x += fx * moveSpeed;
+                state.shipPosition.y += fy * moveSpeed;
+                state.shipPosition.z += fz * moveSpeed;
+
+                state.distanceTraveled += Math.abs(state.speed) * dt;
+                state.score += Math.abs(state.speed) * dt * 0.2;
+
+                shipGroup.position.set(state.shipPosition.x, state.shipPosition.y, state.shipPosition.z);
+                shipGroup.rotation.set(state.shipPitch, state.shipHeading, state.shipRoll);
+
+                const engineIntensity = Math.min(1, Math.abs(state.speed) / (baseSpeed * stats.boostMult));
+                if (engineGlow) {
+                    engineGlow.material.opacity = 0.4 + engineIntensity * 0.5;
+                    engineGlow.scale.setScalar(0.8 + engineIntensity * 0.6);
+                }
+                if (engineLight) {
+                    engineLight.intensity = 0.4 + engineIntensity * 1.0;
+                }
+
+                if (boostActive && Math.random() < 0.5) {
+                    createBoostParticle();
+                }
+            }
+
+            function createBoostParticle() {
+                if (!engineParticles.mesh || !shipGroup) return;
+                const stats = SHIP_STATS[state.selectedShip];
+                const s = stats.scale;
+                const px = shipGroup.position.x + (Math.random() - 0.5) * 0.8 * s;
+                const py = shipGroup.position.y + (Math.random() - 0.5) * 0.8 * s;
+                const pz = shipGroup.position.z - 2.5 * s;
+                for (let i = 0; i < engineParticles.count; i++) {
+                    if (!engineParticles.active[i]) {
+                        engineParticles.positions[i * 3] = px;
+                        engineParticles.positions[i * 3 + 1] = py;
+                        engineParticles.positions[i * 3 + 2] = pz;
+                        engineParticles.life[i] = 0.5 + Math.random() * 0.5;
+                        engineParticles.active[i] = true;
+                        break;
+                    }
+                }
+            }
+
+            function updateParticles(dt) {
+                if (!engineParticles.mesh) return;
+                let anyActive = false;
+                for (let i = 0; i < engineParticles.count; i++) {
+                    if (engineParticles.active[i]) {
+                        engineParticles.life[i] -= dt;
+                        if (engineParticles.life[i] <= 0) {
+                            engineParticles.active[i] = false;
+                            engineParticles.positions[i * 3 + 1] = -9999;
+                        } else {
+                            engineParticles.positions[i * 3 + 2] -= 8 * dt;
+                            engineParticles.positions[i * 3 + 1] += (Math.random() - 0.5) * 2 * dt;
+                            anyActive = true;
+                        }
+                    }
+                }
+                engineParticles.mesh.geometry.attributes.position.needsUpdate = true;
+                engineParticles.mesh.visible = anyActive || Math.abs(state.speed) > 5;
+            }
+
+            function updateAsteroids(dt) {
+                asteroids.forEach(ast => {
+                    ast.rotation.x += ast.userData.rotSpeed.x;
+                    ast.rotation.y += ast.userData.rotSpeed.y;
+                    ast.rotation.z += ast.userData.rotSpeed.z;
+                });
+            }
+
+            function updateCollectibles(dt) {
+                if (!shipGroup) return;
+                const sp = state.shipPosition;
+                collectibles.forEach(col => {
+                    if (col.userData.collected) return;
+                    col.rotation.y += dt * 1.5;
+                    col.position.y += Math.sin(Date.now() * 0.002 + col.userData.bobPhase) * 0.003;
+                    const dist = col.position.distanceTo(new THREE.Vector3(sp.x, sp.y, sp.z));
+                    if (dist < 8) {
+                        col.userData.collected = true;
+                        col.visible = false;
+                        state.collectiblesTaken++;
+                        state.score += 100;
+                        AudioSys.playCollectible();
+                        createCollectEffect(col.position.clone());
+                        showToast('+100');
+                    }
+                });
+            }
+
+            function createCollectEffect(pos) {
+                const effectCount = state.quality === 'HIGH' ? 20 : state.quality === 'MEDIUM' ? 12 : 6;
+                for (let i = 0; i < effectCount; i++) {
+                    const geo = new THREE.SphereGeometry(0.4, 4, 4);
+                    const mat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.9,
+                        blending: THREE.AdditiveBlending, depthWrite: false });
+                    const e = new THREE.Mesh(geo, mat);
+                    e.position.copy(pos);
+                    e.userData = { vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12, vz: (Math
+                            .random() - 0.5) * 12, life: 0.8 };
+                    scene.add(e);
+                    collectedEffects.push(e);
+                }
+            }
+
+            function updateCollectEffects(dt) {
+                for (let i = collectedEffects.length - 1; i >= 0; i--) {
+                    const e = collectedEffects[i];
+                    e.userData.life -= dt;
+                    e.position.x += e.userData.vx * dt;
+                    e.position.y += e.userData.vy * dt;
+                    e.position.z += e.userData.vz * dt;
+                    e.material.opacity = e.userData.life * 0.9;
+                    if (e.userData.life <= 0) {
+                        scene.remove(e);
+                        e.geometry.dispose();
+                        e.material.dispose();
+                        collectedEffects.splice(i, 1);
+                    }
+                }
+            }
+
+            function updatePlanetProximity(dt) {
+                const sp = state.shipPosition;
+                let nearestName = '—';
+                let nearestDist = Infinity;
+                planets.forEach(p => {
+                    const dist = p.position.distanceTo(new THREE.Vector3(sp.x, sp.y, sp.z));
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearestName = p.userData.name;
+                    }
+                    if (dist < p.userData.radius + 15 && !p.userData.discovered) {
+                        p.userData.discovered = true;
+                        if (!state.discoveredPlanets.includes(p.userData.name)) {
+                            state.discoveredPlanets.push(p.userData.name);
+                            state.score += 500;
+                            AudioSys.playDiscovery();
+                            showDiscovery(p.userData.name);
+                        }
+                    }
+                });
+                state.nearestPlanetName = nearestName;
+                state.nearestPlanetDist = nearestDist;
+            }
+
+            function updateCamera(dt) {
+                if (!shipGroup) return;
+                const sp = state.shipPosition;
+                const heading = state.shipHeading;
+                const pitch = state.shipPitch;
+                const roll = state.shipRoll;
+
+                const behindDist = 18;
+                const heightOffset = 7;
+                const cx = sp.x - Math.sin(heading) * Math.cos(pitch) * behindDist;
+                const cy = sp.y - Math.sin(pitch) * behindDist + heightOffset;
+                const cz = sp.z - Math.cos(heading) * Math.cos(pitch) * behindDist;
+
+                camera.position.lerp(new THREE.Vector3(cx, cy, cz), Math.min(1, 6 * dt));
+
+                const lookX = sp.x + Math.sin(heading) * Math.cos(pitch) * 20;
+                const lookY = sp.y + Math.sin(pitch) * 20;
+                const lookZ = sp.z + Math.cos(heading) * Math.cos(pitch) * 20;
+                camera.lookAt(lookX, lookY, lookZ);
+
+                const baseFOV = 70;
+                const targetFOV = baseFOV + cameraFOVBoost * 15;
+                if (camera.fov !== targetFOV) {
+                    camera.fov += (targetFOV - camera.fov) * Math.min(1, 8 * dt);
+                    camera.updateProjectionMatrix();
+                }
+            }
+
+            function updateHUD() {
+                const sp = state.shipPosition;
+                document.getElementById('hud-pos-x').textContent = 'X: ' + Math.round(sp.x);
+                document.getElementById('hud-pos-y').textContent = 'Y: ' + Math.round(sp.y);
+                document.getElementById('hud-pos-z').textContent = 'Z: ' + Math.round(sp.z);
+                document.getElementById('hud-planet-name').textContent = state.nearestPlanetName || '—';
+                document.getElementById('hud-planet-dist').textContent = state.nearestPlanetDist && state
+                    .nearestPlanetDist !== Infinity ? Math.round(state.nearestPlanetDist) + ' m' : '—';
+                document.getElementById('hud-speed-val').textContent = Math.round(Math.abs(state.speed)) + ' m/s';
+                document.getElementById('hud-score-val').textContent = Math.floor(state.score);
+                document.getElementById('hud-planets-found').textContent = 'PLANETS: ' + state.discoveredPlanets
+                    .length + '/5';
+                document.getElementById('hud-distance').textContent = 'DISTANCE: ' + (state.distanceTraveled / 1000)
+                    .toFixed(1) + ' KM';
+                document.getElementById('energy-bar').style.width = state.energy + '%';
+                document.getElementById('boost-bar').style.width = state.boostAmount + '%';
+
+                const headingDeg = ((state.shipHeading * 180 / Math.PI) % 360 + 360) % 360;
+                document.getElementById('hud-heading').textContent = 'HDG: ' + String(Math.round(headingDeg))
+                    .padStart(3, '0') + '°';
+                document.getElementById('hud-pitch').textContent = 'PTC: ' + String(Math.round(state.shipPitch * 180 /
+                    Math.PI)).padStart(2, '0') + '°';
+
+                const compassEls = document.querySelectorAll('#compass-strip span');
+                const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+                const dirAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+                let activeIdx = 0;
+                let minDiff = 360;
+                dirs.forEach((d, i) => {
+                    let diff = Math.abs(headingDeg - dirAngles[i]);
+                    if (diff > 180) diff = 360 - diff;
+                    if (diff < minDiff) { minDiff = diff;
+                        activeIdx = i; }
+                });
+                compassEls.forEach((el, i) => {
+                    el.classList.toggle('compass-active', i === activeIdx);
+                });
+            }
+
+            function updateTargetMarkers() {
+                if (!camera || !shipGroup) return;
+                targetMarkers.forEach(tm => {
+                    const planet = tm.planet;
+                    const dist = planet.position.distanceTo(new THREE.Vector3(state.shipPosition.x, state
+                        .shipPosition.y, state.shipPosition.z));
+                    if (dist < 500 && dist > planet.userData.radius + 15) {
+                        const worldPos = planet.position.clone();
+                        const screenPos = worldPos.project(camera);
+                        const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+                        const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+                        if (screenPos.z < 1 && x > 0 && x < window.innerWidth && y > 0 && y < window.innerHeight) {
+                            tm.marker.style.display = 'block';
+                            tm.marker.style.left = x + 'px';
+                            tm.marker.style.top = y + 'px';
+                            tm.marker.textContent = planet.userData.name + ' ' + Math.round(dist) + 'm';
+                        } else {
+                            tm.marker.style.display = 'none';
+                        }
+                    } else {
+                        tm.marker.style.display = 'none';
+                    }
+                });
+            }
+
+            function updateEngineSound() {
+                const intensity = Math.min(1, Math.abs(state.speed) / 60);
+                AudioSys.updateEngine(intensity);
+            }
+
+            // ==================== RESIZE ====================
+            function handleResize() {
+                if (!renderer) return;
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                checkOrientation();
+                detectDevice();
+            }
+
+            function checkOrientation() {
+                const isPortrait = window.innerHeight > window.innerWidth;
+                state.isPortrait = isPortrait;
+                if (isPortrait && (state.isMobile || window.innerWidth < 600)) {
+                    portraitWarning.classList.add('active');
+                } else {
+                    portraitWarning.classList.remove('active');
+                }
+            }
+
+            function detectDevice() {
+                state.isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(
+                    navigator.userAgent);
+                state.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator
+                    .msMaxTouchPoints > 0);
+                if (state.isMobile) {
+                    if (state.quality === 'HIGH') state.quality = 'MEDIUM';
+                }
+            }
+
+            // ==================== INIT ====================
+            function init() {
+                detectDevice();
+                if (state.isMobile) {
+                    state.quality = 'MEDIUM';
+                    document.querySelectorAll('.quality-btn').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.q === 'MEDIUM');
+                    });
+                }
+                checkOrientation();
+                window.addEventListener('resize', handleResize);
+                window.addEventListener('orientationchange', () => setTimeout(handleResize, 300));
+
+                if (hasSave()) {
+                    document.querySelectorAll('.btn').forEach(b => {
+                        if (b.textContent.includes('Lanjutkan')) b.style.display = 'inline-block';
+                    });
+                }
+
+                setupInput();
+                state.lastTime = performance.now();
+                requestAnimationFrame(gameLoop);
+
+                if (state.isMobile || state.isTouchDevice) {
+                    mobileControls.classList.add('active');
+                }
+            }
+
+            init();
+
+        })();
+    </script>
+</body>
+  </html>
